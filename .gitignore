@@ -1,0 +1,12 @@
+node_modules/
+.DS_Store
+private/
+.terraform.lock.hcl
+.terraform/
+terraform.tfstate
+terraform.tfstate.backup
+.kubeconfig.yml
+.deploy
+cache_*
+ipfs-repo
+keys/
