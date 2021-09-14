@@ -11,40 +11,40 @@ export const useCarmel = (config: any, dispatch: any = undefined) => {
   const [events, setEvents] = useState<any>([])
   const [newEvent, setNewEvent] = useState<any>()
 
-  const onNewEvent = (e: any) => {
-      switch(e.type) {
-        case EVENT.CONNECTED:
-          return
-        case EVENT.DATA_CHANGED:
-          // setData({ _timestamp: Date.now(), ...session.data })
-          return
-        default:
-      }
+  // const onNewEvent = (e: any) => {
+  //     switch(e.type) {
+  //       case EVENT.CONNECTED:
+  //         return
+  //       case EVENT.DATA_CHANGED:
+  //         // setData({ _timestamp: Date.now(), ...session.data })
+  //         return
+  //       default:
+  //     }
       
-      setNewEvent(e)
-  }
+  //     setNewEvent(e)
+  // }
 
   const init = async () => {
-    session.listen((type: EVENT, id: string, data: any) => {
-      if (events.length === 0 || events[events.length - 1].id !== id) {
-        onNewEvent({ type, id, data })
-      }
+    // session.listen((type: EVENT, id: string, data: any) => {
+    //   if (events.length === 0 || events[events.length - 1].id !== id) {
+    //     onNewEvent({ type, id, data })
+    //   }
 
-      events.push({ type, id, data })
-    })
+    //   events.push({ type, id, data })
+    // })
 
-    await session.start()
+    // await session.start()
   }
 
   useEffect(() => {
-    setSession(new Session(config, dispatch))
+    // setSession(new Session(config, dispatch))
   }, [])
 
   useEffect(() => {
     (async () => {
-      if (!session) return 
-      await init()
-      setReady(true)
+      // if (!session) return 
+      // await init()
+      // setReady(true)
     })()
   }, [session])
 
@@ -54,7 +54,7 @@ export const useCarmel = (config: any, dispatch: any = undefined) => {
     ready, 
     newEvent, 
     loggedIn, 
-    EVENT, 
-    SESSION_STATUS
+    // EVENT, 
+    // SESSION_STATUS
   }
 }

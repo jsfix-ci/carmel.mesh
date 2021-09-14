@@ -1,5 +1,5 @@
 import { Session } from '.'
-import { Data, EVENT, SESSION_STATUS, SWARM_EVENT, events } from '.'
+import { Data, EVENT, SESSION_STATUS, SWARM_EVENT } from '.'
 import debug from 'debug'
 
 const LOG = debug("carmel:node")
