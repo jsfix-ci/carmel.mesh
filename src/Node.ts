@@ -56,7 +56,7 @@ export class Node {
         this._onEventResult = this.onEventResult.bind(this)
         this._connected = false 
         this._sendQueue = []
-        this._isOperator = (session.config.settings && session.config.settings.eosAccountName && session.config.settings.eosUsername)
+        this._isOperator = session.config.isOperator
         this._swarm = { operators: {}, peers: {}, ipfs: {} }
         this.sync = this._sync.bind(this)
         this._send = { raw: this._sendRaw.bind(this) }
@@ -261,29 +261,29 @@ export class Node {
     async onEvent (type: string, event: any) {
         LOG(`<- received event [type=${type}]`)
 
-        const handler = events[`${type.toLowerCase()}` as keyof typeof events]
+        // const handler = events[`${type.toLowerCase()}` as keyof typeof events]
         
-        if (!handler) return 
+        // if (!handler) return 
 
-        // Handle it
-        const result = await handler(this.session, event)
+        // // Handle it
+        // const result = await handler(this.session, event)
 
-        // Send the result back
-        const resultHandler = events[`${type.toLowerCase()}_result` as keyof typeof events]
-        // resultHandler && this.send.raw(`${type.toUpperCase()}_RESULT`, result)
+        // // Send the result back
+        // const resultHandler = events[`${type.toLowerCase()}_result` as keyof typeof events]
+        // // resultHandler && this.send.raw(`${type.toUpperCase()}_RESULT`, result)
 
-        return result
+        // return result
     }
 
     async onEventResult (type: string, event: any) {
         LOG(`<- received event result [type=${type}]`)
 
-        const handler = events[`${type.toLowerCase()}` as keyof typeof events]
+        // const handler = events[`${type.toLowerCase()}` as keyof typeof events]
         
-        if (!handler) return 
+        // if (!handler) return 
 
-        // Handle it
-        return handler(this.session, event)
+        // // Handle it
+        // return handler(this.session, event)
     }
 
     async _sendRaw (type: string, event: any) {
@@ -314,7 +314,18 @@ export class Node {
     }
 
     async resolveMesh () {
-        this._mesh = await this.session.chain.getMesh()
+        const relays = [{
+            type: "webrtc-star",
+            url: "carmel-relay0.chunky.io",
+            port: 443
+        }]
+
+        const swarm = relays.filter((s: any) => s.type === 'webrtc-star').map((s: any) => `/dns4/${s.url}/tcp/${s.port || 443}/wss/p2p-webrtc-star`)
+
+        this._mesh = {
+            swarm
+        }
+ 
         return this.mesh
     }
 
@@ -325,7 +336,9 @@ export class Node {
             let repo = `_ipfs`
     
             if (this.isBrowser) {
-                this._ipfs = await require('ipfs').create(IPFS_BROWSER_CONFIG(this.mesh.swarm, repo))
+                console.log("STARTING IPFS....")
+                const ipfsLib = require('ipfs')
+                this._ipfs = await ipfsLib.create(IPFS_BROWSER_CONFIG(this.mesh.swarm, repo))
                 return
             }
 
@@ -345,27 +358,27 @@ export class Node {
         await this.resolveMesh()
         await this.startIPFS(ipfs)
 
-        if (!this.ipfs) return 
+        // if (!this.ipfs) return 
 
-        const { id } = await this.ipfs.id()
-        this._cid = id 
+        // const { id } = await this.ipfs.id()
+        // this._cid = id 
 
-        await Promise.all(Object.keys(SWARM_EVENT).map((e: string) => {
-            this._send[e.toLowerCase()] = async (props: any) => this._sendRaw(e, props || {})
+        // await Promise.all(Object.keys(SWARM_EVENT).map((e: string) => {
+        //     this._send[e.toLowerCase()] = async (props: any) => this._sendRaw(e, props || {})
 
-            this.isOperator && this._listen(e)
-            this.isOperator || this._listen(`${e}_RESULT`, true)
-        }))
+        //     this.isOperator && this._listen(e)
+        //     this.isOperator || this._listen(`${e}_RESULT`, true)
+        // }))
 
-        await this.ipfs.files.mkdir('/carmel', { parents: true })
+        // await this.ipfs.files.mkdir('/carmel', { parents: true })
 
-        LOG(`started ${this.isOperator ? 'as operator ': ''}[cid=${this.cid} browser=${this.isBrowser}]`)
+        // LOG(`started ${this.isOperator ? 'as operator ': ''}[cid=${this.cid} browser=${this.isBrowser}]`)
 
-        if (this.isOperator) {
-            return
-        }
+        // if (this.isOperator) {
+        //     return
+        // }
 
-        this.startSyncTimer()
-        this.sync()
+        // this.startSyncTimer()
+        // this.sync()
     }
 }

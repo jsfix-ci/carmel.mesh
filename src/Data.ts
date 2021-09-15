@@ -3,7 +3,6 @@ import Automerge from 'automerge'
 import { nanoid } from 'nanoid'
 import { Session, EVENT } from '.'
 import debug from 'debug'
-import { actions } from '.'
 
 const LOG = debug("carmel:data")
 const CONTENT_MODEL_VERSION = "1.0"
@@ -125,27 +124,27 @@ export class Data {
     // }
 
     update(data: any = {}) {
-        this.session.dispatch(actions.update(this, data))
+        // this.session.dispatch(actions.update(this, data))
     }
 
     updateSelected(data: any = {}) {
-        this.session.dispatch(actions.updateSelected(this, data))
+        // this.session.dispatch(actions.updateSelected(this, data))
     }
 
     select(id: string) {
-        this.session.dispatch(actions.select(this, id))
+        // this.session.dispatch(actions.select(this, id))
     }
 
     deselect() {
-        this.session.dispatch(actions.deselect(this))
+        // this.session.dispatch(actions.deselect(this))
     }
 
     updateBlob(id: string, data: any = {}) {
-        this.session.dispatch(actions.updateBlob(this, `${this.slice}:${id}`, data))
+        // this.session.dispatch(actions.updateBlob(this, `${this.slice}:${id}`, data))
     }
 
     push (id: string, update: any = {}) {
-        this.session.dispatch(actions.push(this, id, update))
+        // this.session.dispatch(actions.push(this, id, update))
     }
 
     // async _pushBlobs() {

@@ -25,7 +25,7 @@ export class Session {
     private _dispatch: any
 
     constructor(config: any, dispatch: any = undefined) {
-        this._config = config
+        this._config = config || {}
         this._dispatch = dispatch
         this._isBrowser = (typeof window !== 'undefined')
         this._cache = new Cache(this.isBrowser)
@@ -123,7 +123,7 @@ export class Session {
 
     async start(ipfs?: any) {
         LOG(`starting [revision=${REVISION}]`)
-        
+        console.log("SSTART SESSION2")
         this.setStatus(SESSION_STATUS.INITIALIZING)
 
         await this.init()
