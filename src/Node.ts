@@ -358,27 +358,27 @@ export class Node {
         await this.resolveMesh()
         await this.startIPFS(ipfs)
 
-        // if (!this.ipfs) return 
+        if (!this.ipfs) return 
 
-        // const { id } = await this.ipfs.id()
-        // this._cid = id 
+        const { id } = await this.ipfs.id()
+        this._cid = id 
 
-        // await Promise.all(Object.keys(SWARM_EVENT).map((e: string) => {
-        //     this._send[e.toLowerCase()] = async (props: any) => this._sendRaw(e, props || {})
+        await Promise.all(Object.keys(SWARM_EVENT).map((e: string) => {
+            this._send[e.toLowerCase()] = async (props: any) => this._sendRaw(e, props || {})
 
-        //     this.isOperator && this._listen(e)
-        //     this.isOperator || this._listen(`${e}_RESULT`, true)
-        // }))
+            this.isOperator && this._listen(e)
+            this.isOperator || this._listen(`${e}_RESULT`, true)
+        }))
 
-        // await this.ipfs.files.mkdir('/carmel', { parents: true })
+        await this.ipfs.files.mkdir('/carmel', { parents: true })
 
-        // LOG(`started ${this.isOperator ? 'as operator ': ''}[cid=${this.cid} browser=${this.isBrowser}]`)
+        LOG(`started ${this.isOperator ? 'as operator ': ''}[cid=${this.cid} browser=${this.isBrowser}]`)
 
-        // if (this.isOperator) {
-        //     return
-        // }
+        if (this.isOperator) {
+            return
+        }
 
-        // this.startSyncTimer()
-        // this.sync()
+        this.startSyncTimer()
+        this.sync()
     }
 }

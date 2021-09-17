@@ -9,6 +9,8 @@ import {
 } from '.'
 import debug from 'debug'
 
+console.log(process.env.DEBUG)
+
 const LOG = debug("carmel:session")
 const REVISION = 'test-001'
 
@@ -123,7 +125,6 @@ export class Session {
 
     async start(ipfs?: any) {
         LOG(`starting [revision=${REVISION}]`)
-        console.log("SSTART SESSION2")
         this.setStatus(SESSION_STATUS.INITIALIZING)
 
         await this.init()
