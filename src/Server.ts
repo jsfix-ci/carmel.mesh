@@ -1,9 +1,11 @@
 import { Session } from '.'
 import { Data, EVENT, SESSION_STATUS, SWARM_EVENT } from '.'
 import debug from 'debug'
+import * as eos from '@carmel/eos'
 
 const LOG = debug("carmel:server")
 const MIN_OPERATORS_REQUIRED = 1
+const DEFAULT_EOS_URL = "https://eos.greymass.com"
 
 export const IPFS_BROWSER_CONFIG: any = (Swarm: string[], repo: string) => {
     return {
@@ -45,6 +47,7 @@ export class Server {
     private sync: any
     private _connected: boolean
     private _sendQueue: any
+    private _chain: any 
 
     constructor(session: Session) {
         this._session = session
@@ -67,6 +70,10 @@ export class Server {
 
     get sendQueue() {
         return this._sendQueue
+    }
+
+    get chain() {
+        return this._chain
     }
 
     get syncTimer () {
@@ -362,6 +369,23 @@ export class Server {
         }
     }
 
+    async connectToEOS() {
+        if (!this.isOperator || !this.session.config.eos) {
+            LOG(`not connected to EOS`)
+            return 
+        }
+
+        this._chain = {
+            account: this.session.config.eos.account, 
+            ...eos.chain({
+                url: this.session.config.eos.url || DEFAULT_EOS_URL,
+                keys: this.session.config.eos.keys
+            })
+        }
+
+        LOG(`connected to EOS [account=${this.chain.account}]`)
+    }
+
     async start(ipfs?: any) {        
         LOG(`starting [browser=${this.isBrowser}]`)
 
@@ -387,6 +411,8 @@ export class Server {
         await this.ipfs.files.mkdir('/carmel', { parents: true })
 
         LOG(`started ${this.isOperator ? 'as operator ': ''}[cid=${this.cid} browser=${this.isBrowser}]`)
+
+        await this.connectToEOS()
 
         if (this.isOperator) {
             return

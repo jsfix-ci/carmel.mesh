@@ -34,8 +34,8 @@ export class Session {
         this._server = new Server(this)
         this._id = ""
         this._revision = this.config.revision || `N/A-${Date.now()}`
-        this._listeners = []        
-
+        this._listeners = []     
+    
         Object.keys(this.config.data || {}).map(async (slice: string) => this._data[slice] = new Data(this, slice))
     }
 
