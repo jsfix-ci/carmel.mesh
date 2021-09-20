@@ -29,6 +29,7 @@ export enum WORK {
 
 export enum SWARM_EVENT {
     ACCEPT = "ACCEPT",
+    SYSTEM = "SYSTEM",
     PING = "PING"
 }
 

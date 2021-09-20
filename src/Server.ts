@@ -2,8 +2,11 @@ import { Session } from '.'
 import { Data, EVENT, SESSION_STATUS, SWARM_EVENT } from '.'
 import debug from 'debug'
 import * as eos from '@carmel/eos'
+import * as EVENTS from './events'
 
 const LOG = debug("carmel:server")
+const eventlog = debug("carmel:events")
+
 const MIN_OPERATORS_REQUIRED = 1
 const DEFAULT_EOS_URL = "https://eos.greymass.com"
 
@@ -271,37 +274,40 @@ export class Server {
     async onEventRequest (type: string, event: any) {
         LOG(`<- received [${type}] request`)
 
-        // const handler = events[`${type.toLowerCase()}` as keyof typeof events]
+        const handler: any = EVENTS[`${type.toLowerCase()}` as keyof typeof EVENTS]
         
-        // if (!handler) return 
+        if (!handler) {
+            LOG(`   [ skipped ] could not find event handler`)
+            return 
+        } 
 
-        // // Handle it
-        // const result = await handler(this.session, event)
+        // Handle it
+        const result = await handler.request({ session: this.session, event, eventlog })
 
-        // // Send the result back
-        // const resultHandler = events[`${type.toLowerCase()}_result` as keyof typeof events]
-        // // resultHandler && this.send.raw(`${type.toUpperCase()}_RESULT`, result)
-
-        // return result
+        // Send the result back
+        this.send[type.toLowerCase()](result)
     }
 
     async onEventResponse (type: string, event: any) {
         LOG(`<- received [${type}] response`)
 
-        // const handler = events[`${type.toLowerCase()}` as keyof typeof events]
+        const handler: any = EVENTS[`${type.toLowerCase()}` as keyof typeof EVENTS]
         
-        // if (!handler) return 
+        if (!handler) {
+            LOG(`   [ skipped ] could not find event handler`)
+            return 
+        } 
 
-        // // Handle it
-        // return handler(this.session, event)
+        // Handle it
+        await handler.response({ session: this.session, event, eventlog })
     }
 
     async _sendRaw (type: string, event: any, isResponse: boolean = false) {
-        if (!this.ipfs) return
+            if (!this.ipfs) return
 
         const fullType = `${isResponse ? 'res': 'req'}:${type}`.toLowerCase()
 
-        if (!this.isConnected) {
+        if (!this.isOperator && !this.isConnected) {
             LOG(`-> delaying event until connection is established [${fullType}]`)
             await this.addToSendQueue({ type, event, isResponse })
             return 

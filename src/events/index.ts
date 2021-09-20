@@ -1,2 +1,3 @@
-export * from './main'
-export * from './account'
+export * as system from './system'
+export * as accept from './accept'
+export * as ping from './ping'
