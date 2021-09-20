@@ -2,7 +2,7 @@ import { Session } from '.'
 import { Data, EVENT, SESSION_STATUS, SWARM_EVENT } from '.'
 import debug from 'debug'
 
-const LOG = debug("carmel:node")
+const LOG = debug("carmel:server")
 const MIN_OPERATORS_REQUIRED = 1
 
 export const IPFS_BROWSER_CONFIG: any = (Swarm: string[], repo: string) => {
@@ -29,7 +29,7 @@ export const IPFS_BROWSER_CONFIG: any = (Swarm: string[], repo: string) => {
 
 export const SYNC_INTERVAL = 1000
     
-export class Node {
+export class Server {
     private _cid: string 
     private _ipfs: any
     private _ctl: any
@@ -37,13 +37,12 @@ export class Node {
     private _isOperator: boolean
     private _mesh: any
     private _listen: any
-    private _onEvent: any
-    private _onEventResult: any
+    private _onEventRequest: any
+    private _onEventResponse: any
     private _session: Session
     private _syncTimer: any
     private _send: any
     private sync: any
-    private _swarm: any
     private _connected: boolean
     private _sendQueue: any
 
@@ -52,14 +51,14 @@ export class Node {
         this._cid = ""
         this._isBrowser = (typeof window !== 'undefined')
         this._listen = this.listen.bind(this)
-        this._onEvent = this.onEvent.bind(this)
-        this._onEventResult = this.onEventResult.bind(this)
+        this._onEventRequest = this.onEventRequest.bind(this)
+        this._onEventResponse = this.onEventResponse.bind(this)
         this._connected = false 
         this._sendQueue = []
         this._isOperator = session.config.isOperator
-        this._swarm = { operators: {}, peers: {}, ipfs: {} }
+        this._mesh = { operators: [], peers: [], relays: [] }
         this.sync = this._sync.bind(this)
-        this._send = { raw: this._sendRaw.bind(this) }
+        this._send = { _: this._sendRaw.bind(this) }
     }
 
     get connected () {
@@ -110,10 +109,6 @@ export class Node {
         return this._connected
     }
 
-    get swarm () {
-        return this._swarm
-    }
-
     stopSyncTimer() {
         if (!this.syncTimer) return 
 
@@ -121,22 +116,30 @@ export class Node {
     }
 
     async _sync () {
-        const ipfsPeers = await this.ipfs.swarm.peers() || []
-        const carmelOperators = await this.ipfs.pubsub.peers(`#carmel:events:${SWARM_EVENT.ACCEPT.toLowerCase()}`) || []
+        this._mesh.operators = []
+        this._mesh.peers = []
         this._connected = false
 
-        console.log(carmelOperators)
+        const ipfsPeers = await this.ipfs.swarm.peers() || []
+        const carmelOperators = await this.ipfs.pubsub.peers(`#carmel:events:req:${SWARM_EVENT.ACCEPT.toLowerCase()}`) || []
+
+        this._mesh.peers = ipfsPeers.map((p: any) => p.peer)
+
         if (!carmelOperators || carmelOperators.length < MIN_OPERATORS_REQUIRED) {
             LOG(`looking for Carmel Operators [found=${carmelOperators.length} required=${MIN_OPERATORS_REQUIRED}]`)
             return 
         }
 
-        carmelOperators.map((op: string) => this._swarm.operators[op] = { timestamp: Date.now() })
+        this._mesh.operators = carmelOperators
         this._connected = true
 
-        this.session.onEvent(EVENT.CONNECTED, carmelOperators)
+        this.session.onEvent(EVENT.CONNECTED, this.mesh)
 
-        LOG(`connected [carmelOperators=${carmelOperators.length}]`)
+        LOG(`connected to the Carmel Mesh [operators=${this.mesh.operators.length} peers=${this.mesh.peers.length} relays=${this.mesh.relays.length}]`)
+
+        this.mesh.operators.map((s: string, i: number) => LOG(`   operator ${i}: ${s}`))
+        this.mesh.relays.map((s: string, i: number) => LOG(`   relay ${i}: ${s}`))
+        this.mesh.peers.map((s: string, i: number) => LOG(`   peer ${i}: ${s}`))
 
         await this.flushSendQueue()
     }
@@ -148,7 +151,7 @@ export class Node {
 
         LOG(`flushing send queue [events=${this.sendQueue.length}]`)
 
-        await Promise.all(this.sendQueue.map((m: any) => this.send.raw(m.type, m.event)))
+        await Promise.all(this.sendQueue.map((m: any) => this.send._(m.type, m.event, m.isResponse)))
 
         this._sendQueue = []
         await this.session.cache.put("session/sendqueue", [])
@@ -258,8 +261,8 @@ export class Node {
         })
     }
 
-    async onEvent (type: string, event: any) {
-        LOG(`<- received event [type=${type}]`)
+    async onEventRequest (type: string, event: any) {
+        LOG(`<- received [${type}] request`)
 
         // const handler = events[`${type.toLowerCase()}` as keyof typeof events]
         
@@ -275,8 +278,8 @@ export class Node {
         // return result
     }
 
-    async onEventResult (type: string, event: any) {
-        LOG(`<- received event result [type=${type}]`)
+    async onEventResponse (type: string, event: any) {
+        LOG(`<- received [${type}] response`)
 
         // const handler = events[`${type.toLowerCase()}` as keyof typeof events]
         
@@ -286,59 +289,66 @@ export class Node {
         // return handler(this.session, event)
     }
 
-    async _sendRaw (type: string, event: any) {
+    async _sendRaw (type: string, event: any, isResponse: boolean = false) {
         if (!this.ipfs) return
-    
+
+        const fullType = `${isResponse ? 'res': 'req'}:${type}`.toLowerCase()
+
         if (!this.isConnected) {
-            LOG(`-> delaying event until connection is established [type=${type}]`)
-            await this.addToSendQueue({ type, event })
+            LOG(`-> delaying event until connection is established [${fullType}]`)
+            await this.addToSendQueue({ type, event, isResponse })
             return 
         }
 
-        this.ipfs.pubsub.publish(`#carmel:events:${type.toLowerCase()}`, JSON.stringify(event || {}))
+        this.ipfs.pubsub.publish(`#carmel:events:${fullType}`, JSON.stringify(event || {}))
 
-        LOG(`=> sent event [type=${type}]`)
+        LOG(`-> sent [${type}] ${isResponse ? 'response' : 'request'}`)
     }
 
-    async listen(type: string, result: boolean = false) {
-        LOG(`listen [event=${type}]`)
+    async listen(type: string, response: boolean = false) {
+        LOG(`listening for [${type.toLowerCase()}] ${response ? 'responses' : 'requests'}`)
 
-        this.ipfs.pubsub.subscribe(`#carmel:events:${type.toLowerCase()}`, (message: any) => {
+        const fullType = `${response ? 'res': 'req'}:${type}`.toLowerCase()
+
+        this.ipfs.pubsub.subscribe(`#carmel:events:${fullType}`, (message: any) => {
             try {
                 const { from, data } = message
                 const e = data.toString()
                 if (from === this.cid) return 
-                result ? this._onEventResult(type, JSON.parse(e)) : this._onEvent(type, JSON.parse(e))
+                response ? this._onEventResponse(type.toLowerCase(), JSON.parse(e)) : this._onEventRequest(type.toLowerCase(), JSON.parse(e))
             } catch (err: any) {}
         })
     }
 
-    async resolveMesh () {
+    async resolveRelays () {
+        if (this.mesh.relays.length > 0) {
+            return 
+        }
+
+        LOG(`resolving relays ...`)
+        this._mesh.relays = [] 
+
         const relays = [{
             type: "webrtc-star",
             url: "carmel-relay0.chunky.io",
             port: 443
         }]
 
-        const swarm = relays.filter((s: any) => s.type === 'webrtc-star').map((s: any) => `/dns4/${s.url}/tcp/${s.port || 443}/wss/p2p-webrtc-star`)
+        this._mesh.relays = relays.filter((s: any) => s.type === 'webrtc-star').map((s: any) => `/dns4/${s.url}/tcp/${s.port || 443}/wss/p2p-webrtc-star`)
 
-        this._mesh = {
-            swarm
-        }
- 
-        return this.mesh
+        LOG(`resolved relays (${this.mesh.relays.length})`)        
+        this.mesh.relays.map((s: string, i: number) => LOG(`   relay ${i}: ${s}`))
+
+        return this.mesh.relays
     }
 
     async startIPFS (ipfs?: any) {
         try {
-            if (!this.mesh || !this.mesh.swarm) return 
-
-            let repo = `_ipfs`
+            if (!this.mesh || !this.mesh.relays) return 
     
             if (this.isBrowser) {
-                console.log("STARTING IPFS....")
                 const ipfsLib = require('ipfs')
-                this._ipfs = await ipfsLib.create(IPFS_BROWSER_CONFIG(this.mesh.swarm, repo))
+                this._ipfs = await ipfsLib.create(IPFS_BROWSER_CONFIG(this.mesh.relays, `${this.session.cache.root}/ipfs`))
                 return
             }
 
@@ -348,14 +358,14 @@ export class Node {
 
             this._ipfs = ipfs!.api
         } catch (e: any) {
-            console.log(e)
+            LOG(`Could not start IPFS [Error: ${e.message}]`)
         }
     }
 
     async start(ipfs?: any) {        
         LOG(`starting [browser=${this.isBrowser}]`)
 
-        await this.resolveMesh()
+        await this.resolveRelays()
         await this.startIPFS(ipfs)
 
         if (!this.ipfs) return 
@@ -364,10 +374,14 @@ export class Node {
         this._cid = id 
 
         await Promise.all(Object.keys(SWARM_EVENT).map((e: string) => {
-            this._send[e.toLowerCase()] = async (props: any) => this._sendRaw(e, props || {})
+            // Operators send responses and non-operators send requests
+            this._send[e.toLowerCase()] = async (props: any) => this._sendRaw(e, props || {}, this.isOperator)
 
+            // Operators listen for event requests
             this.isOperator && this._listen(e)
-            this.isOperator || this._listen(`${e}_RESULT`, true)
+
+            // Non-operators listen for event responses
+            this.isOperator || this._listen(e, true)
         }))
 
         await this.ipfs.files.mkdir('/carmel', { parents: true })
@@ -380,5 +394,9 @@ export class Node {
 
         this.startSyncTimer()
         this.sync()
+    }
+
+    async stop () {
+        this.stopSyncTimer()
     }
 }
