@@ -2,7 +2,6 @@ import { Session } from '.'
 import { Data, EVENT, SESSION_STATUS, SWARM_EVENT } from '.'
 import debug from 'debug'
 import * as eos from '@carmel/eos'
-import * as EVENTS from './events'
 
 const LOG = debug("carmel:server")
 const eventlog = debug("carmel:events")
@@ -51,7 +50,7 @@ export class Server {
     private _connected: boolean
     private _sendQueue: any
     private _chain: any 
-
+    
     constructor(session: Session) {
         this._session = session
         this._cid = ""
@@ -274,7 +273,7 @@ export class Server {
     async onEventRequest (type: string, event: any) {
         LOG(`<- received [${type}] request`)
 
-        const handler: any = EVENTS[`${type.toLowerCase()}` as keyof typeof EVENTS]
+        const handler: any = this.session.handlers[`${type.toLowerCase()}` as keyof typeof this.session.handlers]
         
         if (!handler) {
             LOG(`   [ skipped ] could not find event handler`)
@@ -291,7 +290,7 @@ export class Server {
     async onEventResponse (type: string, event: any) {
         LOG(`<- received [${type}] response`)
 
-        const handler: any = EVENTS[`${type.toLowerCase()}` as keyof typeof EVENTS]
+        const handler: any = this.session.handlers[`${type.toLowerCase()}` as keyof typeof this.session.handlers]
         
         if (!handler) {
             LOG(`   [ skipped ] could not find event handler`)
@@ -315,7 +314,7 @@ export class Server {
 
         this.ipfs.pubsub.publish(`#carmel:events:${fullType}`, JSON.stringify(event || {}))
 
-        LOG(`-> sent [${type}] ${isResponse ? 'response' : 'request'}`)
+        LOG(`-> sent [${type.toLowerCase()}] ${isResponse ? 'response' : 'request'}`)
     }
 
     async listen(type: string, response: boolean = false) {
@@ -383,9 +382,10 @@ export class Server {
 
         this._chain = {
             account: this.session.config.eos.account, 
+            eos,
             ...eos.chain({
                 url: this.session.config.eos.url || DEFAULT_EOS_URL,
-                keys: this.session.config.eos.keys
+                keys: this.session.config.eos.keys,
             })
         }
 

@@ -23,6 +23,7 @@ export class Session {
     private _dir: any
     private _server: Server
     private _dispatch: any
+    private _handlers: any 
 
     constructor(config: any, dispatch: any = undefined) {
         this._config = config || {}
@@ -33,6 +34,7 @@ export class Session {
         this._status = SESSION_STATUS.NEW
         this._server = new Server(this)
         this._id = ""
+        this._handlers = this.config.handlers || {}
         this._revision = this.config.revision || `N/A-${Date.now()}`
         this._listeners = []     
     
@@ -41,6 +43,10 @@ export class Session {
 
     get dir () { 
         return this._dir
+    }
+
+    get handlers () {
+        return this._handlers
     }
 
     get revision () {
