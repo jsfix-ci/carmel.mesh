@@ -1,7 +1,9 @@
 export enum SESSION_STATUS {
     NEW = "new",
     INITIALIZING = "init",
-    READY = "ready"
+    READY = "ready",
+    STOPPING = "stopping",
+    STOPPED = "stopped"
 }
 
 export enum DATATYPE {
@@ -27,8 +29,8 @@ export enum WORK {
 
 export enum SWARM_EVENT {
     ACCEPT = "ACCEPT",
-    CREATE_ACCOUNT = "CREATE_ACCOUNT",
-    UPDATE_ACCOUNT = "UPDATE_ACCOUNT"
+    SYSTEM = "SYSTEM",
+    PING = "PING"
 }
 
 export type ACCOUNT = {
