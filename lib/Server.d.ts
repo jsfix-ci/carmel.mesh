@@ -1,7 +1,7 @@
 import { Session } from '.';
 export declare const IPFS_BROWSER_CONFIG: any;
 export declare const SYNC_INTERVAL = 1000;
-export declare class Node {
+export declare class Server {
     private _cid;
     private _ipfs;
     private _ctl;
@@ -9,18 +9,19 @@ export declare class Node {
     private _isOperator;
     private _mesh;
     private _listen;
-    private _onEvent;
-    private _onEventResult;
+    private _onEventRequest;
+    private _onEventResponse;
     private _session;
     private _syncTimer;
     private _send;
     private sync;
-    private _swarm;
     private _connected;
     private _sendQueue;
+    private _chain;
     constructor(session: Session);
     get connected(): boolean;
     get sendQueue(): any;
+    get chain(): any;
     get syncTimer(): any;
     get session(): Session;
     get mesh(): any;
@@ -31,7 +32,6 @@ export declare class Node {
     get isOperator(): boolean;
     get send(): any;
     get isConnected(): boolean;
-    get swarm(): any;
     stopSyncTimer(): void;
     _sync(): Promise<void>;
     flushSendQueue(): Promise<void>;
@@ -46,11 +46,13 @@ export declare class Node {
         path: string;
         id: string;
     } | undefined>;
-    onEvent(type: string, event: any): Promise<void>;
-    onEventResult(type: string, event: any): Promise<void>;
-    _sendRaw(type: string, event: any): Promise<void>;
-    listen(type: string, result?: boolean): Promise<void>;
-    resolveMesh(): Promise<any>;
+    onEventRequest(type: string, event: any): Promise<void>;
+    onEventResponse(type: string, event: any): Promise<void>;
+    _sendRaw(type: string, event: any, isResponse?: boolean): Promise<void>;
+    listen(type: string, response?: boolean): Promise<void>;
+    resolveRelays(): Promise<any>;
     startIPFS(ipfs?: any): Promise<void>;
+    connectToEOS(): Promise<void>;
     start(ipfs?: any): Promise<void>;
+    stop(): Promise<void>;
 }

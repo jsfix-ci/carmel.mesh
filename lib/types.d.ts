@@ -1,7 +1,9 @@
 export declare enum SESSION_STATUS {
     NEW = "new",
     INITIALIZING = "init",
-    READY = "ready"
+    READY = "ready",
+    STOPPING = "stopping",
+    STOPPED = "stopped"
 }
 export declare enum DATATYPE {
     TABLE = "table",
@@ -23,8 +25,8 @@ export declare enum WORK {
 }
 export declare enum SWARM_EVENT {
     ACCEPT = "ACCEPT",
-    CREATE_ACCOUNT = "CREATE_ACCOUNT",
-    UPDATE_ACCOUNT = "UPDATE_ACCOUNT"
+    SYSTEM = "SYSTEM",
+    PING = "PING"
 }
 export declare type ACCOUNT = {
     username: string;
