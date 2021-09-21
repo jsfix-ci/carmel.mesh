@@ -14,6 +14,8 @@ export declare class Server {
     private _session;
     private _syncTimer;
     private _send;
+    _push: any;
+    _pull: any;
     private sync;
     private _connected;
     private _sendQueue;

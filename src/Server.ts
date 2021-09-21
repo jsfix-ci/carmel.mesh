@@ -46,6 +46,8 @@ export class Server {
     private _session: Session
     private _syncTimer: any
     private _send: any
+    public _push: any
+    public _pull: any
     private sync: any
     private _connected: boolean
     private _sendQueue: any
@@ -64,6 +66,8 @@ export class Server {
         this._mesh = { operators: [], peers: [], relays: [] }
         this.sync = this._sync.bind(this)
         this._send = { _: this._sendRaw.bind(this) }
+        this._push = this.push.bind(this)
+        this._pull = this.pull.bind(this)
     }
 
     get connected () {
@@ -233,6 +237,8 @@ export class Server {
     }
 
     async push (id: string, data: any) {
+        LOG(`pushing ${id} ...`)
+
         if (!this.ipfs) return
 
         const content: string = JSON.stringify({
@@ -241,6 +247,8 @@ export class Server {
             did: `did:carmel:${id}`,
             data
         })
+
+        LOG("content:", content)
 
         try {
             // Remove the old file if present
@@ -381,7 +389,7 @@ export class Server {
         }
 
         this._chain = {
-            account: this.session.config.eos.account, 
+            account: this.session.config.eos.keys.main.id, 
             eos,
             ...eos.chain({
                 url: this.session.config.eos.url || DEFAULT_EOS_URL,
