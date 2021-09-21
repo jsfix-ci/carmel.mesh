@@ -270,10 +270,10 @@ export class Server {
         })
     }
 
-    async onEventRequest (type: string, event: any) {
+    async onEventRequest (type: string, event: any, session: Session) {
         LOG(`<- received [${type}] request`)
 
-        const handler: any = this.session.handlers[`${type.toLowerCase()}` as keyof typeof this.session.handlers]
+        const handler: any = session.handlers[`${type.toLowerCase()}` as keyof typeof session.handlers]
         
         if (!handler) {
             LOG(`   [ skipped ] could not find event handler`)
@@ -281,16 +281,16 @@ export class Server {
         } 
 
         // Handle it
-        const result = await handler.request({ session: this.session, event, eventlog })
+        const result = await handler.request({ session, event, eventlog })
 
         // Send the result back
         this.send[type.toLowerCase()](result)
     }
 
-    async onEventResponse (type: string, event: any) {
+    async onEventResponse (type: string, event: any, session: Session) {
         LOG(`<- received [${type}] response`)
 
-        const handler: any = this.session.handlers[`${type.toLowerCase()}` as keyof typeof this.session.handlers]
+        const handler: any = session.handlers[`${type.toLowerCase()}` as keyof typeof session.handlers]
         
         if (!handler) {
             LOG(`   [ skipped ] could not find event handler`)
@@ -298,7 +298,7 @@ export class Server {
         } 
 
         // Handle it
-        await handler.response({ session: this.session, event, eventlog })
+        await handler.response({ session, event, eventlog })
     }
 
     async _sendRaw (type: string, event: any, isResponse: boolean = false) {
@@ -327,7 +327,7 @@ export class Server {
                 const { from, data } = message
                 const e = data.toString()
                 if (from === this.cid) return 
-                response ? this._onEventResponse(type.toLowerCase(), JSON.parse(e)) : this._onEventRequest(type.toLowerCase(), JSON.parse(e))
+                response ? this._onEventResponse(type.toLowerCase(), JSON.parse(e), this.session) : this._onEventRequest(type.toLowerCase(), JSON.parse(e), this.session)
             } catch (err: any) {}
         })
     }

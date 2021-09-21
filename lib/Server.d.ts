@@ -46,8 +46,8 @@ export declare class Server {
         path: string;
         id: string;
     } | undefined>;
-    onEventRequest(type: string, event: any): Promise<void>;
-    onEventResponse(type: string, event: any): Promise<void>;
+    onEventRequest(type: string, event: any, session: Session): Promise<void>;
+    onEventResponse(type: string, event: any, session: Session): Promise<void>;
     _sendRaw(type: string, event: any, isResponse?: boolean): Promise<void>;
     listen(type: string, response?: boolean): Promise<void>;
     resolveRelays(): Promise<any>;
