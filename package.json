@@ -1,6 +1,6 @@
 {
   "name": "@carmel/mesh",
-  "version": "1.1.6",
+  "version": "1.1.7",
   "description": "The Carmel Mesh JavaScript Library",
   "scripts": {
     "compile": "rm -rf lib && ./node_modules/.bin/tsc",
@@ -27,7 +27,7 @@
     "tsconfig.json"
   ],
   "dependencies": {
-    "@carmel/eos": "^1.1.4",
+    "@carmel/eos": "^1.1.5",
     "@types/axios": "^0.14.0",
     "@types/deepmerge": "^2.2.0",
     "@types/isomorphic-fetch": "0.0.35",

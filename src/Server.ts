@@ -2,6 +2,7 @@ import { Session } from '.'
 import { Data, EVENT, SESSION_STATUS, SWARM_EVENT } from '.'
 import debug from 'debug'
 import * as eos from '@carmel/eos'
+import { DEFAULT_URL } from '@carmel/eos/src'
 
 const LOG = debug("carmel:server")
 const eventlog = debug("carmel:events")
@@ -244,7 +245,6 @@ export class Server {
         const content: string = JSON.stringify({
             timestamp: Date.now(),
             id,    
-            did: `did:carmel:${id}`,
             data
         })
 
@@ -382,22 +382,31 @@ export class Server {
         }
     }
 
-    async connectToEOS() {
-        if (!this.isOperator || !this.session.config.eos) {
-            LOG(`not connected to EOS`)
-            return 
+    async connectToEOS() {       
+        if (this.session.config.eos) {
+            this._chain = {
+                account: this.session.config.eos.keys.main.id, 
+                ...eos.chain({
+                    url: this.session.config.eos.url || DEFAULT_EOS_URL,
+                    keys: this.session.config.eos.keys,
+                })
+            }
+
+            LOG(`connected to EOS [account=${this.chain.account}]`)
+
+            return
         }
 
         this._chain = {
-            account: this.session.config.eos.keys.main.id, 
-            eos,
-            ...eos.chain({
-                url: this.session.config.eos.url || DEFAULT_EOS_URL,
-                keys: this.session.config.eos.keys,
-            })
+            ...eos.anonChain({ url: DEFAULT_URL })
         }
+    }
 
-        LOG(`connected to EOS [account=${this.chain.account}]`)
+    get _ () {
+        return {
+            getId: (username: string) => eos.getId(this.chain, username),
+            system: async (action: string, data: any, key: string = 'main') => eos.system(this.chain, action, data, key)
+        }
     }
 
     async start(ipfs?: any) {        
