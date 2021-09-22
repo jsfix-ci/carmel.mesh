@@ -1,4 +1,4 @@
-import { Cache, Server, EVENT, SESSION_STATUS } from '.';
+import { Cache, Server, Identity, EVENT, SESSION_STATUS } from '.';
 export declare class Session {
     private _id;
     private _revision;
@@ -12,7 +12,9 @@ export declare class Session {
     private _server;
     private _dispatch;
     private _handlers;
+    private _identity;
     constructor(config: any, dispatch?: any);
+    get identity(): Identity;
     get dir(): any;
     get handlers(): any;
     get revision(): string;
@@ -28,6 +30,7 @@ export declare class Session {
     save(): Promise<void>;
     load(): Promise<void>;
     init(): Promise<void>;
+    fetchIdentity(username: string): Promise<Identity | undefined>;
     close(): Promise<void>;
     listen(onEvent: any): void;
     onEvent(type: EVENT, data: any): void;

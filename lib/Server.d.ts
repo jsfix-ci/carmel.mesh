@@ -55,6 +55,10 @@ export declare class Server {
     resolveRelays(): Promise<any>;
     startIPFS(ipfs?: any): Promise<void>;
     connectToEOS(): Promise<void>;
+    get _(): {
+        getId: (username: string) => Promise<any>;
+        system: (action: string, data: any, key?: string) => Promise<any>;
+    };
     start(ipfs?: any): Promise<void>;
     stop(): Promise<void>;
 }

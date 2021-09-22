@@ -4,6 +4,7 @@ import {
     Data,
     IListener,
     Server,
+    Identity,
     EVENT,
     SESSION_STATUS
 } from '.'
@@ -24,6 +25,7 @@ export class Session {
     private _server: Server
     private _dispatch: any
     private _handlers: any 
+    private _identity: Identity
 
     constructor(config: any, dispatch: any = undefined) {
         this._config = config || {}
@@ -39,6 +41,12 @@ export class Session {
         this._listeners = []     
     
         Object.keys(this.config.data || {}).map(async (slice: string) => this._data[slice] = new Data(this, slice))
+
+        this._identity = new Identity(this)
+    }
+ 
+    get identity() {
+        return this._identity
     }
 
     get dir () { 
@@ -102,6 +110,15 @@ export class Session {
     async init () {
         await this.load() 
         await this.save()
+    }
+
+    async fetchIdentity(username: string) {
+        if (!username) return 
+
+        const result: any = await this.server._.getId(username)
+        const i = new Identity(this, result)
+
+        return i
     }
 
     async close () {
