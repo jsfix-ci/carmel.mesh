@@ -76,7 +76,7 @@ export class Identity {
     }
 
     async create(data: any, signer: any) {
-        const result: any = await this.session.server.push("identity", data)
+        const result: any = await this.session.drive.push("identity", data)
         
         if (!result) return 
 

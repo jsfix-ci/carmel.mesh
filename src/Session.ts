@@ -3,8 +3,11 @@ import {
     Cache, 
     Data,
     IListener,
-    Server,
+    Gateway,
+    Chain, 
+    Drive,
     Identity,
+    Station,
     EVENT,
     SESSION_STATUS
 } from '.'
@@ -22,10 +25,13 @@ export class Session {
     private _config: any
     private _listeners: any
     private _dir: any
-    private _server: Server
+    private _gateway: Gateway
     private _dispatch: any
     private _handlers: any 
     private _identity: Identity
+    private _chain: Chain
+    private _station: Station 
+    private _drive: Drive 
 
     constructor(config: any, dispatch: any = undefined) {
         this._config = config || {}
@@ -34,8 +40,11 @@ export class Session {
         this._cache = new Cache(this.isBrowser, this.config.root)
         this._data = { account: new Data(this, 'account') }
         this._status = SESSION_STATUS.NEW
-        this._server = new Server(this)
+        this._gateway = new Gateway(this)
         this._id = ""
+        this._chain = new Chain(this)
+        this._drive = new Drive(this) 
+        this._station = new Station(this)
         this._handlers = this.config.handlers || {}
         this._revision = this.config.revision || `N/A-${Date.now()}`
         this._listeners = []     
@@ -43,6 +52,18 @@ export class Session {
         Object.keys(this.config.data || {}).map(async (slice: string) => this._data[slice] = new Data(this, slice))
 
         this._identity = new Identity(this)
+    }
+
+    get station () {
+        return this._station
+    }
+
+    get chain () {
+        return this._chain 
+    }
+
+    get drive () {
+        return this._drive
     }
  
     get identity() {
@@ -77,8 +98,8 @@ export class Session {
         return this._id
     }
 
-    get server () {
-        return this._server
+    get gateway () {
+        return this._gateway
     }
 
     get status() {
@@ -97,6 +118,14 @@ export class Session {
         return this._isBrowser
     }
 
+    get isReady() {
+        return this.status >= SESSION_STATUS.READY
+    }
+
+    get isConnected() {
+        return this.status >= SESSION_STATUS.CONNECTED
+    }
+
     async save() {
         await this.cache.put(`session/id`, this.id)
         await Promise.all(Object.keys(this.data || {}).map(async (slice: string) => this.data[slice].save()))
@@ -110,15 +139,6 @@ export class Session {
     async init () {
         await this.load() 
         await this.save()
-    }
-
-    async fetchIdentity(username: string) {
-        if (!username) return 
-
-        const result: any = await this.server._.getId(username)
-        const i = new Identity(this, result)
-
-        return i
     }
 
     async close () {
@@ -142,10 +162,6 @@ export class Session {
         this.onEvent(EVENT.STATUS_CHANGED, s)
     }
 
-    get isReady() {
-        return this.status >= SESSION_STATUS.READY
-    }
-
     toJSON() {
         return ({
             id: this.id,
@@ -154,12 +170,16 @@ export class Session {
     }
 
     async start(ipfs?: any) {
-        LOG(`starting [revision=${this.revision}]`)
+        LOG(`starting [revision=${this.revision} operator=${this.config.isOperator}]`)
         this.setStatus(SESSION_STATUS.INITIALIZING)
 
         await this.init()
-        await this.server.start(ipfs)
+        await this.chain.connect()
+
+        await this.gateway.start(ipfs)
         await this.save()
+        await this.drive.mount()
+        await this.station.start()
 
         this.setStatus(SESSION_STATUS.READY)
     }
@@ -168,8 +188,14 @@ export class Session {
         LOG(`stopping [revision=${this.revision}]`)
         this.setStatus(SESSION_STATUS.STOPPING)
 
+        await this.save()
+
+        await this.station.stop()
+        await this.gateway.stop()
+        await this.drive.unmount()
+
+        await this.chain.disconnect()
         await this.close()
-        await this.server.stop()
 
         this.setStatus(SESSION_STATUS.STOPPED)
     }

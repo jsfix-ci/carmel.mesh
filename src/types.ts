@@ -3,7 +3,9 @@ export enum SESSION_STATUS {
     INITIALIZING = "init",
     READY = "ready",
     STOPPING = "stopping",
-    STOPPED = "stopped"
+    STOPPED = "stopped",
+    CONNECTING = "connecting",
+    CONNECTED = "connected"
 }
 
 export enum DATATYPE {
@@ -17,20 +19,7 @@ export enum EVENT {
     USER_DATA_LOOKUP_DONE,
     USER_CREATED,
     USER_LOGIN,
-    DATA_CHANGED,
-    SYNC_DONE,
-    CONNECTED,
-    WORK_DONE
-}
-
-export enum WORK {
-    REGISTER
-}
-
-export enum SWARM_EVENT {
-    ACCEPT = "ACCEPT",
-    SYSTEM = "SYSTEM",
-    PING = "PING"
+    DATA_CHANGED
 }
 
 export type ACCOUNT = {
