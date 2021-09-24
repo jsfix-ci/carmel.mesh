@@ -30,6 +30,10 @@ export type ACCOUNT = {
     privateKey?: string
 }
 
+export interface IFunction {
+    handler (props: any): any
+}
+
 export interface IListener  {
     onEvent(type: EVENT, id: string, data: any): void
 }

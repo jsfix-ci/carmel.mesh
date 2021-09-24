@@ -69,7 +69,7 @@ export class Channel {
 
         const fullType = `${isResponse ? 'res': 'req'}:${type}`.toLowerCase()
 
-        if (!this.station.session.gateway.isOperator && !this.station.session.isConnected) {
+        if (!this.station.session.isConnected) {
             LOG(`-> delaying event until connection is established [${fullType}]`)
             await this.addToSendQueue({ type, event, isResponse })
             return 

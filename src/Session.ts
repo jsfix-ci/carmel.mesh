@@ -4,6 +4,7 @@ import {
     Data,
     IListener,
     Gateway,
+    IFunction,
     Chain, 
     Drive,
     Identity,
@@ -32,6 +33,7 @@ export class Session {
     private _chain: Chain
     private _station: Station 
     private _drive: Drive 
+    private _functions: { [id: string]: IFunction }
 
     constructor(config: any, dispatch: any = undefined) {
         this._config = config || {}
@@ -48,6 +50,7 @@ export class Session {
         this._handlers = this.config.handlers || {}
         this._revision = this.config.revision || `N/A-${Date.now()}`
         this._listeners = []     
+        this._functions = {}
     
         Object.keys(this.config.data || {}).map(async (slice: string) => this._data[slice] = new Data(this, slice))
 
@@ -56,6 +59,10 @@ export class Session {
 
     get station () {
         return this._station
+    }
+
+    get functions () {
+        return this._functions
     }
 
     get chain () {
@@ -167,6 +174,18 @@ export class Session {
             id: this.id,
             cid: this.id
         })
+    }
+
+    async registerFunctions (functions: any) {
+       if (!functions) return 
+
+       for (let id in functions) {
+           const f: any = functions[id]
+           
+           if ("object" !== typeof f || !f || !f.handler) continue
+
+           this._functions[id] = f
+       }
     }
 
     async start(ipfs?: any) {
