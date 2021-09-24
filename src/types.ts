@@ -1,36 +1,16 @@
 export enum SESSION_STATUS {
-    NEW = "new",
-    INITIALIZING = "init",
-    READY = "ready",
-    STOPPING = "stopping",
-    STOPPED = "stopped"
+    NEW = 0,
+    INITIALIZING = 1,
+    READY = 2,
+    STOPPING = 3,
+    STOPPED = 4,
+    CONNECTING = 5,
+    CONNECTED = 6
 }
 
 export enum DATATYPE {
     TABLE = "table",
     OBJECT = "object"
-}
-
-export enum EVENT {
-    STATUS_CHANGED,
-    USER_LOOKUP_DONE,
-    USER_DATA_LOOKUP_DONE,
-    USER_CREATED,
-    USER_LOGIN,
-    DATA_CHANGED,
-    SYNC_DONE,
-    CONNECTED,
-    WORK_DONE
-}
-
-export enum WORK {
-    REGISTER
-}
-
-export enum SWARM_EVENT {
-    ACCEPT = "ACCEPT",
-    SYSTEM = "SYSTEM",
-    PING = "PING"
 }
 
 export type ACCOUNT = {
@@ -40,8 +20,7 @@ export type ACCOUNT = {
     cid: string,
     privateKey?: string
 }
-
-export interface IListener  {
-    onEvent(type: EVENT, id: string, data: any): void
+export interface IFunction {
+    handler (props: any): any
 }
 

@@ -51,6 +51,7 @@
     "js-base64": "^3.6.0",
     "jsonwebtoken": "^8.5.1",
     "level": "^6.0.1",
+    "moment": "^2.29.1",
     "nanoid": "^3.1.20",
     "react": "^17.0.1",
     "react-device-detect": "^1.15.0",
