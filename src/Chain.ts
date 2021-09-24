@@ -5,7 +5,7 @@ import {
     chain,
     getId,
     system
-} from '@carmel/eos'
+} from '@carmel/eos/src'
 
 const LOG = debug("carmel:chain")
 const DEFAULT_URL = "https://eos.greymass.com"

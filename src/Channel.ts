@@ -1,7 +1,7 @@
 import { Station } from '.'
 import debug from 'debug'
 
-const LOG = debug("carmel:channel")
+let LOG = debug("carmel:channel")
 
 export class Channel {
 
@@ -9,34 +9,47 @@ export class Channel {
     public static SYSTEM_ID = "sys"
     public static SYSTEM_MAIN_ID = "sys:main"
     public static SYSTEM_OPERATORS_ID = "sys:ops"
-
-    public static EVENT_RESPONSE_ID = "res"
-    public static EVENT_REQUEST_ID = "req"
-    public static EVENT_MAIN_ID = "main"
+    public static ACCEPT_EVENT_ID = "req:accept"
     
-    public static SYSTEM = {
-        MAIN: this.Id(this.SYSTEM_MAIN_ID),
-        OPERATORS: this.Id(this.SYSTEM_OPERATORS_ID)
+    public static EVENT = {
+        OPERATOR_ACCEPT: this.Id(this.SYSTEM_OPERATORS_ID, this.ACCEPT_EVENT_ID)
     } 
 
     private _id: string 
     private _station: Station 
-    private _listen: any
     private _onEvent: any
-    private _send: any
     private _sendQueue: any
+    private _isOpen: boolean
+    private _config: any 
+    private _events: any
+    private _registerEvent: any
 
-    constructor(id: string, station: Station) {
+    constructor(id: string, config: any, station: Station) {
        this._id = id 
+       LOG = debug(`carmel:channel:${id}`)
+       this._isOpen = false
        this._station = station
-       this._listen = this.listen.bind(this)
+       this._config = config || {}
+       this._events = this.config.events || {}
        this._onEvent = this.onEvent.bind(this)
-       this._send = { _: this._sendRaw.bind(this) }
+       this._registerEvent = this.registerEvent.bind(this)
        this._sendQueue = []
     }
 
-    public static Id (id: string) {
-        return `${this.PREFIX}:${id}`
+    public static Id (id: string, event: string) {
+        return `${this.PREFIX}:${id}:${event}`
+    }
+
+    get events () {
+       return this._events
+    }
+
+    get config() {
+        return this._config
+    }
+
+    get isOpen () {
+        return this._isOpen
     }
 
     get id () {
@@ -51,35 +64,6 @@ export class Channel {
         return this._sendQueue
     }
 
-    get send () {
-        return this._send
-    }
-
-    get defaultEvents () {
-        return [Channel.EVENT_MAIN_ID]
-    }
-
-    get initialEvents () {
-        // TODO add event configuration and filtering
-        return ([])
-    }
-
-    async _sendRaw (type: string, event: any, isResponse: boolean = false) {
-        if (!this.station.session.gateway.ipfs) return
-
-        const fullType = `${isResponse ? 'res': 'req'}:${type}`.toLowerCase()
-
-        if (!this.station.session.isConnected) {
-            LOG(`-> delaying event until connection is established [${fullType}]`)
-            await this.addToSendQueue({ type, event, isResponse })
-            return 
-        }
-
-        this.station.session.gateway.ipfs.pubsub.publish(`#carmel:events:${fullType}`, JSON.stringify(event || {}))
-
-        LOG(`-> sent [${type.toLowerCase()}] ${isResponse ? 'response' : 'request'}`)
-    }
-
     async flush () {
         this._sendQueue = await this.station.session.cache.get("session/sendqueue") || []
 
@@ -87,7 +71,7 @@ export class Channel {
 
         LOG(`flushing send queue [events=${this.sendQueue.length}]`)
 
-        await Promise.all(this.sendQueue.map((m: any) => this.send._(m.type, m.event, m.isResponse)))
+        await Promise.all(this.sendQueue.map((m: any) => this.sendEvent(m.id, m.data)))
 
         this._sendQueue = []
         await this.station.session.cache.put("session/sendqueue", [])
@@ -95,69 +79,85 @@ export class Channel {
         LOG(`send queue completely flushed`)
     }
 
-    async addToSendQueue(e: any) {
+    async onEvent (id: string, data: any, station: Station) {
+        const log = debug(`carmel:event:${this.id}:${id}`)
+        log(`<- received [${id}] event`)
+
+        if (!this.events || !this.events[id]) {
+            log(`   [ skipped ] unrecognized event`)
+            return 
+        } 
+        
+        if (!this.station.session.functions || !this.station.session.functions[this.events[id]] ) {
+            log(`   [ skipped ] no function associated with this event`)
+            return 
+        }
+
+        const f: any = this.station.session.functions[this.events[id]]
+
+        if (!f.handler || "function" !== typeof f.handler) {
+            log(`   [ skipped ] invalid function`)
+            return 
+        }
+
+        try {
+           const result = await f.handler({ log, session: this.station.session, channel: this, id, data })
+           log(`   success`, result)
+        } catch (e: any) {
+            log(`   Error:`, e)
+        }
+    }
+
+    async queueEvent(e: any) {
         this._sendQueue = await this.station.session.cache.get("session/sendqueue") || []
         this.sendQueue.push(e)
         await this.station.session.cache.put("session/sendqueue", this.sendQueue)
     }        
 
-    async onEvent (id: string, event: any, station: Station, isResponse: boolean = false) {
-        LOG(`<- received [${id}] ${isResponse ? 'response' : 'request'}`)
+    async sendEvent (id: string, data: any = {}) {
+        if (!id || !this.events[id]) return 
+        // this._sendRaw(e, props || {}, this.isOperator)
 
-        // const handler: any = session.handlers[`${type.toLowerCase()}` as keyof typeof session.handlers]
-        
-        // if (!handler) {
-        //     LOG(`   [ skipped ] could not find event handler`)
-        //     return 
-        // } 
+        if (!this.station.session.isConnected) {
+            LOG(`-> delaying sending [${id}] event until connection is established`)
+            await this.queueEvent({ id, data })
+            return 
+        }
 
-        // // Handle it
-        // const result = await handler.request({ session, event, eventlog })
-
-        // // Send the result back
-        // this.send[type.toLowerCase()](result)
+        this.station.session.gateway.ipfs.pubsub.publish(`${Channel.PREFIX}:${this.id}:${id}`, JSON.stringify(data))
+        LOG(`-> sent [${id}] event`)
     }
 
-    async listen(id: string, isResponse: boolean = false) {
-        LOG(`listening for [${id}] ${isResponse ? 'responses' : 'requests'}`)
-        // this._send[e.toLowerCase()] = async (props: any) => this._sendRaw(e, props || {}, this.isOperator)
+    async registerEvent (id: string) {
+       if (!id || !this.events[id]) return 
 
-        this.station.session.gateway.ipfs.pubsub.subscribe(`${Channel.PREFIX}:${this.id}:${isResponse ? Channel.EVENT_RESPONSE_ID : Channel.EVENT_REQUEST_ID}:${id}`, (message: any) => {
+       this.station.session.gateway.ipfs.pubsub.subscribe(`${Channel.PREFIX}:${this.id}:${id}`, (message: any) => {
             try {
                 const { from, data } = message
                 const e = data.toString()
                 if (from === this.station.session.gateway.cid) return 
                 
-                this._onEvent(id, JSON.parse(e), this, isResponse)
+                this._onEvent(id, JSON.parse(e), this)
             } catch (err: any) {}
         })
+
+       LOG(`registered [${id}] event`)
     }
 
-    // async addEventHandler (handler: any) {
-        
-        // // Operators send responses and non-operators send requests
-        // this._send[e.toLowerCase()] = async (props: any) => this._sendRaw(e, props || {}, this.isOperator)
-
-
-        // this._
-        // // Operators listen for event requests
-        // this.isOperator && this._listen(e)
-
-        // // Non-operators listen for event responses
-        // this.isOperator || this._listen(e, true)
-    // }
-
     async open() {
-        LOG(`opening channel [id=${this.id}] ...`)
+        LOG(`opening channel ...`)
+        
+        await Promise.all(Object.keys(this.events).map(this._registerEvent)) 
+        this._isOpen = true 
 
-        await Promise.all(this.defaultEvents.concat(this.initialEvents).map((id: string) => this.listen(id))) 
-
-        LOG(`channel ready [id=${this.id}]`)
+        LOG(`channel ready`)
     }
 
     async close() {
-        LOG(`closing channel [id=${this.id}] ...`)
+        LOG(`closing channel ...`)
 
-        LOG(`channel closed [id=${this.id}]`)
+        this._isOpen = false 
+        
+        LOG(`channel closed`)
     }
 }

@@ -2,14 +2,12 @@ import { nanoid } from 'nanoid'
 import { 
     Cache, 
     Data,
-    IListener,
     Gateway,
     IFunction,
     Chain, 
     Drive,
     Identity,
     Station,
-    EVENT,
     SESSION_STATUS
 } from '.'
 import debug from 'debug'
@@ -28,7 +26,6 @@ export class Session {
     private _dir: any
     private _gateway: Gateway
     private _dispatch: any
-    private _handlers: any 
     private _identity: Identity
     private _chain: Chain
     private _station: Station 
@@ -47,7 +44,6 @@ export class Session {
         this._chain = new Chain(this)
         this._drive = new Drive(this) 
         this._station = new Station(this)
-        this._handlers = this.config.handlers || {}
         this._revision = this.config.revision || `N/A-${Date.now()}`
         this._listeners = []     
         this._functions = {}
@@ -79,10 +75,6 @@ export class Session {
 
     get dir () { 
         return this._dir
-    }
-
-    get handlers () {
-        return this._handlers
     }
 
     get revision () {
@@ -152,21 +144,10 @@ export class Session {
         await this.cache.close()
     }
 
-    listen(onEvent: any) {
-        this.listeners.push(<IListener>{ onEvent })
-    }
-
-    onEvent(type: EVENT, data: any) {
-        this.listeners.map((listener: IListener) => {
-            listener.onEvent(type, nanoid(), data)
-        })
-    }
-
     setStatus(s: SESSION_STATUS) {
         LOG(`changed status [status=${s}]`)
 
         this._status = s
-        this.onEvent(EVENT.STATUS_CHANGED, s)
     }
 
     toJSON() {
@@ -206,8 +187,6 @@ export class Session {
     async stop () {
         LOG(`stopping [revision=${this.revision}]`)
         this.setStatus(SESSION_STATUS.STOPPING)
-
-        await this.save()
 
         await this.station.stop()
         await this.gateway.stop()

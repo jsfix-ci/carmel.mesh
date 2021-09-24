@@ -1,7 +1,7 @@
 import merge from 'deepmerge'
 import Automerge from 'automerge'
 import { nanoid } from 'nanoid'
-import { Session, EVENT } from '.'
+import { Session } from '.'
 import debug from 'debug'
 
 const LOG = debug("carmel:data")
@@ -91,7 +91,7 @@ export class Data {
         const res = { lastModified: this.lastModified, data: snapshot }
 
         await this.session.cache.put(`data/${this.slice}`, res)
-        this.session.onEvent(EVENT.DATA_CHANGED, this.slice)
+        // this.session.onEvent(EVENT.DATA_CHANGED, this.slice)
 
         LOG(`saved [slice=${this.slice}]`)
 

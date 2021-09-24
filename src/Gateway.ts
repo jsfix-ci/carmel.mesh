@@ -1,5 +1,4 @@
 import { Channel, Session, SESSION_STATUS } from '.'
-import { EVENT } from '.'
 import debug from 'debug'
 
 const LOG = debug("carmel:gateway")
@@ -95,7 +94,13 @@ export class Gateway {
     }
 
     async _sync () {
+        if (this.session.config.isOperator && !this.session.isConnected) {
+            this.session.setStatus(SESSION_STATUS.CONNECTED)
+            return 
+        }
+
         if (this.session.isConnected && this.refresh > 0) {
+            this._refresh--
             return 
         }
 
@@ -103,7 +108,7 @@ export class Gateway {
         this._mesh.peers = []
 
         const ipfsPeers = await this.ipfs.swarm.peers() || []
-        const carmelOperators = await this.ipfs.pubsub.peers(Channel.SYSTEM.OPERATORS) || []
+        const carmelOperators = await this.ipfs.pubsub.peers(Channel.EVENT.OPERATOR_ACCEPT) || []
 
         this._mesh.peers = ipfsPeers.map((p: any) => p.peer)
 

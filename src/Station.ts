@@ -1,16 +1,20 @@
 import { Session, Channel } from '.'
 import debug from 'debug'
 
-const LOG = debug("carmel:chain")
+const LOG = debug("carmel:station")
 
 export class Station {
     
     private _session: Session
-    private _channels: { [id: string]: Channel }
+    private _channels: { [id: string]: any }
+    private _openChannel: any
+    private _closeChannel: any
 
     constructor(session: Session) {
         this._session = session
-        this._channels = {}
+        this._channels = this.session.config.channels || {}
+        this._openChannel = this.openChannel.bind(this)
+        this._closeChannel = this.closeChannel.bind(this)
     }
 
     get session () {
@@ -21,15 +25,6 @@ export class Station {
         return this._channels
     }
 
-    get defaultChannels () {
-        return [Channel.SYSTEM_MAIN_ID].concat(this.session.config.isOperator ? [Channel.SYSTEM_OPERATORS_ID] : [])
-    }
-
-    get initialChannels () {
-        // TODO add channel filtering
-        return (this.session.config.channels || [])
-    }
-
     channel (id: string) {
         return this.channels[id]
     }
@@ -38,36 +33,46 @@ export class Station {
         await Promise.all(Object.values(this.channels).map((channel: Channel) => channel.flush()))
     }
 
-    async joinChannel(id: string) {
-        if (this.channels[id]) return this.channels[id]
+    async openChannel(id: string) {
+        if (this.channels[id] && this.channels[id].isOpen) return this.channels[id]
 
-        LOG(`joining channel [id=${id}] ...`)
+        LOG(`opening [${id}] channel ...`)
 
-        const channel = new Channel(id, this)
+        const channel = new Channel(id, this.channels[id], this)
         await channel.open()
 
         this.channels[id] = channel
 
-        LOG(`joined channel [id=${this.channels[id]}]`)
+        LOG(`channel [${id}] ready`)
 
         return this.channels[id]
     }
 
-    async leaveChannel(id: string) {
+    async closeChannel(id: string) {
         if (!this.channels[id]) return
 
-        LOG(`leaving channel [id=${id}] ...`)
+        LOG(`closing [${id}] channel ...`)
 
-        await this.channels[id].close()
+        if (this.channels[id].close) {
+            await this.channels[id].close()
+        }
+
+        this.channels[id] = undefined
         delete this.channels[id]
 
-        LOG(`left channel [id=${this.channels[id]}]`)
+        LOG(`channel [${id}] is ready`)
     }
 
     async start () {
         LOG("starting the station ...")
 
-        await Promise.all(this.defaultChannels.concat(this.initialChannels).map(this.joinChannel))
+        if (this.session.config.isOperator) {
+            this.channels[Channel.SYSTEM_OPERATORS_ID] = this.channels[Channel.SYSTEM_OPERATORS_ID] || {}
+            this.channels[Channel.SYSTEM_OPERATORS_ID].events = this.channels[Channel.SYSTEM_OPERATORS_ID].events || {}
+            this.channels[Channel.SYSTEM_OPERATORS_ID].events[Channel.ACCEPT_EVENT_ID] = true 
+        }
+
+        await Promise.all(Object.keys(this.channels).map(this._openChannel))
 
         LOG("started the station")
     }
@@ -75,7 +80,7 @@ export class Station {
     async stop () {
         LOG("stopping the station ...")
 
-        await Promise.all(Object.keys(this.channels).map(this.leaveChannel))
+        await Promise.all(Object.keys(this.channels).map(this._closeChannel))
 
         LOG("stopped the station")
     }    
