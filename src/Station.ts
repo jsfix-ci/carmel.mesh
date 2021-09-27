@@ -30,7 +30,7 @@ export class Station {
     }
 
     async flush() {
-        await Promise.all(Object.values(this.channels).map((channel: Channel) => channel.flush()))
+        await Promise.all(Object.values(this.channels).map((channel: Channel) => channel.flush && channel.flush()))
     }
 
     async openChannel(id: string) {

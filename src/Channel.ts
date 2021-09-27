@@ -9,10 +9,13 @@ export class Channel {
     public static SYSTEM_ID = "sys"
     public static SYSTEM_MAIN_ID = "sys:main"
     public static SYSTEM_OPERATORS_ID = "sys:ops"
-    public static ACCEPT_EVENT_ID = "req:accept"
+    public static ACCEPT_EVENT_ID = "accept"
+    public static RESPONSE_EVENT = "response"
+    public static RESPONSE_ALL_EVENT = "responseAll"
+    public static REQUEST_EVENT = "request"
     
     public static EVENT = {
-        OPERATOR_ACCEPT: this.Id(this.SYSTEM_OPERATORS_ID, this.ACCEPT_EVENT_ID)
+        OPERATOR_ACCEPT: this.Id(this.SYSTEM_OPERATORS_ID, this.ACCEPT_EVENT_ID, this.REQUEST_EVENT)
     } 
 
     private _id: string 
@@ -23,6 +26,8 @@ export class Channel {
     private _config: any 
     private _events: any
     private _registerEvent: any
+    private _listenForEvent: any
+    private _eventHandler: any
 
     constructor(id: string, config: any, station: Station) {
        this._id = id 
@@ -33,11 +38,13 @@ export class Channel {
        this._events = this.config.events || {}
        this._onEvent = this.onEvent.bind(this)
        this._registerEvent = this.registerEvent.bind(this)
+       this._listenForEvent = this.listenForEvent.bind(this)
+       this._eventHandler = this.eventHandler.bind(this)
        this._sendQueue = []
     }
 
-    public static Id (id: string, event: string) {
-        return `${this.PREFIX}:${id}:${event}`
+    public static Id (id: string, event: string, type: string) {
+        return `${this.PREFIX}:${id}:${event}@${type}`
     }
 
     get events () {
@@ -79,30 +86,42 @@ export class Channel {
         LOG(`send queue completely flushed`)
     }
 
-    async onEvent (id: string, data: any, station: Station) {
-        const log = debug(`carmel:event:${this.id}:${id}`)
-        log(`<- received [${id}] event`)
-
+    eventHandler(id: string) {        
         if (!this.events || !this.events[id]) {
-            log(`   [ skipped ] unrecognized event`)
             return 
         } 
         
         if (!this.station.session.functions || !this.station.session.functions[this.events[id]] ) {
-            log(`   [ skipped ] no function associated with this event`)
             return 
         }
 
-        const f: any = this.station.session.functions[this.events[id]]
+        return this.station.session.functions[this.events[id]] 
+    }
 
-        if (!f.handler || "function" !== typeof f.handler) {
-            log(`   [ skipped ] invalid function`)
+    async onEvent (id: string, data: any, type: string, from: string) {
+        const log = debug(`carmel:event:${this.id}:${id}`)
+        log(`<- received [${id}] event (${type})`)
+
+        const handler = this._eventHandler(id)
+
+        if (!handler) {
+            log(`   [ skipped ] unrecognized event`)
             return 
-        }
+        } 
 
         try {
-           const result = await f.handler({ log, session: this.station.session, channel: this, id, data })
-           log(`   success`, result)
+            if (type === Channel.REQUEST_EVENT && handler[type]) {
+                const result = await handler[type]({ log, session: this.station.session, channel: this, id, data, from })
+                log(`   processed:`, result)
+                
+                if (data.sender && data.sender.id) {
+                    const response = await this.sendEvent(`${id}`, result, `${Channel.RESPONSE_EVENT}:${data.sender.id}`)
+                    log(`   response:`, response)
+                }
+            } else if (type === Channel.RESPONSE_EVENT && handler[type]) {
+                const result = await handler[type]({ log, session: this.station.session, channel: this, id, data, from })
+                log(`   processed:`, result)
+            }
         } catch (e: any) {
             log(`   Error:`, e)
         }
@@ -114,34 +133,63 @@ export class Channel {
         await this.station.session.cache.put("session/sendqueue", this.sendQueue)
     }        
 
-    async sendEvent (id: string, data: any = {}) {
+    async sendEvent (id: string, data: any, type: string = Channel.REQUEST_EVENT) {
         if (!id || !this.events[id]) return 
-        // this._sendRaw(e, props || {}, this.isOperator)
 
         if (!this.station.session.isConnected) {
             LOG(`-> delaying sending [${id}] event until connection is established`)
             await this.queueEvent({ id, data })
-            return 
+            return { message: "event queued" }
         }
 
-        this.station.session.gateway.ipfs.pubsub.publish(`${Channel.PREFIX}:${this.id}:${id}`, JSON.stringify(data))
+        this.station.session.gateway.ipfs.pubsub.publish(`${Channel.PREFIX}:${this.id}:${id}@${type}`, JSON.stringify({
+            ...data,
+            sender: { 
+                id: this.station.session.id,
+            }
+        }))
+
         LOG(`-> sent [${id}] event`)
+
+        return { message: "event sent" }
     }
 
-    async registerEvent (id: string) {
-       if (!id || !this.events[id]) return 
+    async listenForEvent (id: string, type: string, log: any) {
+        log(`registered [${type}] handler`)
 
-       this.station.session.gateway.ipfs.pubsub.subscribe(`${Channel.PREFIX}:${this.id}:${id}`, (message: any) => {
+        this.station.session.gateway.ipfs.pubsub.subscribe(`${Channel.PREFIX}:${this.id}:${id}@${type}${type === 'response' ? ':' + this.station.session.id : ''}`, (message: any) => {
             try {
                 const { from, data } = message
                 const e = data.toString()
                 if (from === this.station.session.gateway.cid) return 
                 
-                this._onEvent(id, JSON.parse(e), this)
+                this._onEvent(id, JSON.parse(e), type, from)
             } catch (err: any) {}
         })
+    }
 
-       LOG(`registered [${id}] event`)
+    async registerEvent (id: string) {
+       if (!id || !this.events[id]) return 
+
+       const log = debug(`carmel:event:${this.id}:${id}`)
+       LOG(`adding [${id}] event ...`)
+
+       if (id === Channel.ACCEPT_EVENT_ID) {
+             this._listenForEvent(id, "request", log)
+             LOG(`added [${id}] event`)           
+            return
+       }
+
+       const handler: any = this.eventHandler(id)
+
+       if (!handler) {
+           LOG(`   [ skipped ] no handler found`)
+           return 
+       } 
+
+       Object.keys(handler).map((h: string) => this._listenForEvent(id, h, log))
+
+       LOG(`added [${id}] event`)
     }
 
     async open() {

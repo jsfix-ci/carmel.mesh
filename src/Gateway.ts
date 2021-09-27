@@ -28,8 +28,7 @@ export const IPFS_BROWSER_CONFIG: any = (Swarm: string[], repo: string) => {
             }
         }
     } as any
-}
-    
+}    
 export class Gateway {
     private _cid: string 
     private _ipfs: any
