@@ -15,7 +15,7 @@ export class Channel {
     public static REQUEST_EVENT = "request"
     
     public static EVENT = {
-        OPERATOR_ACCEPT: this.Id(this.SYSTEM_OPERATORS_ID, this.ACCEPT_EVENT_ID, this.REQUEST_EVENT)
+        OPERATOR_ACCEPT: Channel.Id(Channel.SYSTEM_OPERATORS_ID, Channel.ACCEPT_EVENT_ID, Channel.REQUEST_EVENT)
     } 
 
     private _id: string 
@@ -44,7 +44,7 @@ export class Channel {
     }
 
     public static Id (id: string, event: string, type: string) {
-        return `${this.PREFIX}:${id}:${event}@${type}`
+        return `${Channel.PREFIX}:${id}:${event}@${type}`
     }
 
     get events () {
@@ -190,6 +190,11 @@ export class Channel {
        Object.keys(handler).map((h: string) => this._listenForEvent(id, h, log))
 
        LOG(`added [${id}] event`)
+    }
+
+    async addEvent(id: string, f: string) {
+        this._events[id] = f
+        await this.registerEvent(id)
     }
 
     async open() {

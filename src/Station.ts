@@ -1,5 +1,6 @@
 import { Session, Channel } from '.'
 import debug from 'debug'
+import deepmerge from 'deepmerge'
 
 const LOG = debug("carmel:station")
 
@@ -61,6 +62,14 @@ export class Station {
         delete this.channels[id]
 
         LOG(`channel [${id}] is ready`)
+    }
+
+    async addChannel(id: string, data: any) {
+        if (this.channels[id]) return this.channels[id]
+
+        this.channels[id] = { ...data }
+        
+        return this.openChannel(id)
     }
 
     async start () {
