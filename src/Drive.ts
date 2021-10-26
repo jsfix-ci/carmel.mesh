@@ -1,8 +1,11 @@
 import { Session } from './Session'
 import debug from 'debug'
+import listDir from 'recursive-readdir'
+import path from 'path'
+import fs from 'fs-extra'
+import { globSource } from 'ipfs'
 
 const LOG = debug("carmel:drive")
-
 export class Drive {
     
     public static ROOT = "/carmel"
@@ -72,6 +75,39 @@ export class Drive {
         }
     }
 
+    async _readDir (dir: string) {
+        const ignores = ['.DS_Store']
+        let files: any[] = await listDir(dir)
+
+        files = files.filter(file => !ignores.includes(path.basename(file))).map(file => {
+            const info = fs.statSync(file)
+            
+            return {
+                path: path.relative(dir, file),
+                content: fs.readFileSync(file),
+                mtime: info.mtime
+            }
+        })
+
+        return files
+    }
+
+    async pushDir (dir: string, base: string) {
+        LOG(`pushing dir ${dir} ...`)
+
+        const files = await this._readDir(dir)
+
+        await Promise.all(files.map(file => this.ipfs.files.write(`${Drive.ROOT}/${base}/${file.path}`, file.content, {
+            parents: true, create: true, mtime: file.mtime  
+        })))
+
+        LOG(`pushed ${files.length} files`)
+
+        const result = await this.ipfs.files.stat(`${Drive.ROOT}/${base}`)
+
+        return result
+    }
+
     async push (id: string, data: any) {
         LOG(`pushing ${id} ...`)
 
@@ -82,8 +118,6 @@ export class Drive {
             id,    
             data
         })
-
-        LOG("content:", content)
 
         try {
             // Remove the old file if present
