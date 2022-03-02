@@ -18,6 +18,4 @@ export declare class Identity {
         publicKey: string;
         did: string;
     } | undefined;
-    update(data: any, signer: any): Promise<void>;
-    create(data: any, signer: any): Promise<void>;
 }

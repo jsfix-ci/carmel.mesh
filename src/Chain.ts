@@ -87,7 +87,7 @@ export class Chain {
 
         const relays = [{
             type: "webrtc-star",
-            url: "carmel-relay0.chunky.io",
+            url: "carmel-relay-0.fluidtrends.io",
             port: 443
         }]
 
