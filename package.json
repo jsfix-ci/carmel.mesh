@@ -1,6 +1,6 @@
 {
   "name": "@carmel/mesh",
-  "version": "1.1.7",
+  "version": "1.2.0",
   "description": "The Carmel Mesh JavaScript Library",
   "scripts": {
     "compile": "rm -rf lib && ./node_modules/.bin/tsc",
@@ -37,6 +37,7 @@
     "@types/randombytes": "^2.0.0",
     "@types/react": "^17.0.0",
     "@types/react-redux": "^7.1.16",
+    "@types/recursive-readdir": "^2.2.0",
     "automerge": "^0.14.2",
     "axios": "^0.21.1",
     "connected-react-router": "^6.9.1",
@@ -58,6 +59,7 @@
     "react-dom": "^17.0.2",
     "react-redux": "^7.2.2",
     "react-router": "^5.2.1",
+    "recursive-readdir": "^2.2.2",
     "redux": "^4.0.5",
     "redux-persist": "^6.0.0",
     "redux-saga": "^1.1.3",

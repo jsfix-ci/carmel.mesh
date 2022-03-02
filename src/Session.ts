@@ -40,7 +40,7 @@ export class Session {
         this._data = { account: new Data(this, 'account') }
         this._status = SESSION_STATUS.NEW
         this._gateway = new Gateway(this)
-        this._id = ""
+        this._id = nanoid()
         this._chain = new Chain(this)
         this._drive = new Drive(this) 
         this._station = new Station(this)
@@ -163,7 +163,7 @@ export class Session {
        for (let id in functions) {
            const f: any = functions[id]
            
-           if ("object" !== typeof f || !f || !f.handler) continue
+           if ("object" !== typeof f || !f) continue
 
            this._functions[id] = f
        }

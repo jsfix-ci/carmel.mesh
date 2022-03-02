@@ -1,4 +1,4 @@
-import { Cache, Server, Identity, EVENT, SESSION_STATUS } from '.';
+import { Cache, Gateway, IFunction, Chain, Drive, Identity, Station, SESSION_STATUS } from '.';
 export declare class Session {
     private _id;
     private _revision;
@@ -9,37 +9,44 @@ export declare class Session {
     private _config;
     private _listeners;
     private _dir;
-    private _server;
+    private _gateway;
     private _dispatch;
-    private _handlers;
     private _identity;
+    private _chain;
+    private _station;
+    private _drive;
+    private _functions;
     constructor(config: any, dispatch?: any);
+    get station(): Station;
+    get functions(): {
+        [id: string]: IFunction;
+    };
+    get chain(): Chain;
+    get drive(): Drive;
     get identity(): Identity;
     get dir(): any;
-    get handlers(): any;
     get revision(): string;
     get listeners(): any;
     get dispatch(): any;
     get config(): any;
     get id(): string;
-    get server(): Server;
+    get gateway(): Gateway;
     get status(): SESSION_STATUS;
     get cache(): Cache;
     get data(): any;
     get isBrowser(): boolean;
+    get isReady(): boolean;
+    get isConnected(): boolean;
     save(): Promise<void>;
     load(): Promise<void>;
     init(): Promise<void>;
-    fetchIdentity(username: string): Promise<Identity | undefined>;
     close(): Promise<void>;
-    listen(onEvent: any): void;
-    onEvent(type: EVENT, data: any): void;
     setStatus(s: SESSION_STATUS): void;
-    get isReady(): boolean;
     toJSON(): {
         id: string;
         cid: string;
     };
+    registerFunctions(functions: any): Promise<void>;
     start(ipfs?: any): Promise<void>;
     stop(): Promise<void>;
 }
